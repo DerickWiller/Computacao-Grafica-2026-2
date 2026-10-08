@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Rasterização - Atividade 05</title>
+    <link rel="stylesheet" href="src/estilo.css" />
+  </head>
+  <body>
+    <header class="barra-menu">
+      <span class="marca">Raster</span>
+
+      <nav class="menus">
+        <div class="menu">
+          <button class="menu-titulo">Primitivas</button>
+          <div class="menu-lista">
+            <div class="submenu">
+              <button class="menu-item">Linhas <span class="seta">›</span></button>
+              <div class="menu-lista">
+                <button class="menu-item" data-algoritmo="analitico"><i class="cor"></i>Analítico</button>
+                <button class="menu-item" data-algoritmo="dda"><i class="cor"></i>DDA</button>
+                <button class="menu-item" data-algoritmo="bresenham"><i class="cor"></i>Bresenham</button>
+              </div>
+            </div>
+            <div class="submenu">
+              <button class="menu-item">Círculos <span class="seta">›</span></button>
+              <div class="menu-lista">
+                <button class="menu-item" data-algoritmo="circulo"><i class="cor"></i>Bresenham</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="menu">
+          <button class="menu-titulo">Editar</button>
+          <div class="menu-lista">
+            <button class="menu-item" data-acao="desfazer">Desfazer <kbd>Ctrl+Z</kbd></button>
+            <button class="menu-item" data-acao="cancelar">Cancelar desenho <kbd>Esc</kbd></button>
+            <button class="menu-item" data-acao="limpar">Limpar tudo</button>
+          </div>
+        </div>
+
+        <div class="menu">
+          <button class="menu-titulo">Exibir</button>
+          <div class="menu-lista">
+            <button class="menu-item" data-acao="zoom-mais">Aumentar pixels <kbd>+</kbd></button>
+            <button class="menu-item" data-acao="zoom-menos">Diminuir pixels <kbd>-</kbd></button>
+            <button class="menu-item" data-acao="grade">Mostrar grade <kbd>G</kbd></button>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="area">
+      <section class="palco" id="palco">
+        <div class="tela" id="tela">
+          <canvas id="canvas"></canvas>
+          <div class="grade" id="grade"></div>
+          <div class="cursor" id="cursor"></div>
+        </div>
+      </section>
+
+      <aside class="painel">
+        <div class="cartao">
+          <h2>Ferramenta</h2>
+          <p class="ferramenta"><i class="cor" id="ferramenta-cor"></i><span id="ferramenta-nome"></span></p>
+          <p class="instrucao" id="instrucao"></p>
+
+          <form class="raio" id="form-raio" hidden>
+            <label for="raio">Raio</label>
+            <input id="raio" type="number" min="0" max="1000" step="1" inputmode="numeric" disabled />
+            <button type="submit" disabled>Desenhar</button>
+          </form>
+        </div>
+
+        <div class="cartao lista">
+          <div class="lista-topo">
+            <h2>Desenhadas</h2>
+            <button class="botao-texto" data-acao="limpar">Limpar</button>
+          </div>
+          <ul id="lista"></ul>
+          <p class="vazio" id="vazio">Nada desenhado ainda.</p>
+        </div>
+      </aside>
+    </main>
+
+    <footer class="status">
+      <span id="status-mouse">x: -  y: -</span>
+      <span id="status-grade"></span>
+    </footer>
+
+    <script src="src/algoritmos/reta-analitica.js"></script>
+    <script src="src/algoritmos/reta-dda.js"></script>
+    <script src="src/algoritmos/reta-bresenham.js"></script>
+    <script src="src/algoritmos/circunferencia-bresenham.js"></script>
+    <script src="src/framebuffer.js"></script>
+    <script src="src/ferramentas.js"></script>
+    <script src="src/menu.js"></script>
+    <script src="src/main.js"></script>
+  </body>
+</html>
