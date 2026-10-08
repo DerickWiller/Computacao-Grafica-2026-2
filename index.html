@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Rasterização - Atividade 06</title>
+    <title>Computação Gráfica - Atividade 07</title>
     <link rel="stylesheet" href="src/estilo.css" />
   </head>
   <body>
@@ -35,6 +35,15 @@
                 <button class="menu-item" data-algoritmo="circulo"><i class="cor"></i>Bresenham</button>
               </div>
             </div>
+          </div>
+        </div>
+
+        <div class="menu">
+          <button class="menu-titulo">Transformações</button>
+          <div class="menu-lista">
+            <button class="menu-item" data-transformacao="translacao">Translação</button>
+            <button class="menu-item" data-transformacao="escala">Escala</button>
+            <button class="menu-item" data-transformacao="rotacao">Rotação</button>
           </div>
         </div>
 
@@ -82,6 +91,13 @@
           <button class="botao-texto alterar-faces" id="alterar-faces" data-acao="faces" hidden>Alterar quantidade de faces</button>
         </div>
 
+        <div class="cartao">
+          <h2>Transformação</h2>
+          <p class="ferramenta" id="transformacao-nome"></p>
+          <p class="instrucao" id="transformacao-instrucao"></p>
+          <button class="botao-texto restaurar" id="restaurar" data-acao="restaurar" hidden>Voltar a figura ao original</button>
+        </div>
+
         <div class="cartao lista">
           <div class="lista-topo">
             <h2>Desenhadas</h2>
@@ -117,6 +133,7 @@
     <script src="src/algoritmos/poligono.js"></script>
     <script src="src/algoritmos/preenchimento-varredura.js"></script>
     <script src="src/algoritmos/preenchimento-boundary-fill.js"></script>
+    <script src="src/transformacoes.js"></script>
     <script src="src/framebuffer.js"></script>
     <script src="src/ferramentas.js"></script>
     <script src="src/menu.js"></script>

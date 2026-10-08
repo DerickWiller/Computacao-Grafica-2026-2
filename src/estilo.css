@@ -179,7 +179,7 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
 .raio button { padding: 6px 12px; background: var(--destaque); color: var(--fundo); border-radius: 6px; font-weight: 600; }
 .raio :disabled { opacity: 0.4; cursor: default; }
 
-.alterar-faces { margin-top: 10px; }
+.alterar-faces, .restaurar { margin-top: 10px; }
 
 .lista { display: flex; flex-direction: column; flex: 1; min-height: 0; }
 .lista-topo { display: flex; justify-content: space-between; align-items: baseline; }
@@ -193,9 +193,14 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
   grid-template-columns: auto 1fr auto;
   align-items: center;
   column-gap: 8px;
-  padding: 8px 0;
+  padding: 8px 6px;
   border-top: 1px solid var(--borda);
+  border-radius: 6px;
+  cursor: pointer;
 }
+
+.lista li:hover { background: var(--superficie-2); }
+.lista li.selecionada { background: var(--superficie-2); outline: 1px solid var(--destaque); outline-offset: -1px; }
 
 .lista li:first-child { border-top: 0; }
 .lista .detalhe { grid-column: 2 / 4; font-size: 12px; color: var(--texto-fraco); }

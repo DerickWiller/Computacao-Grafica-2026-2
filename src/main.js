@@ -21,9 +21,15 @@ const estado = {
   vertices: [],
   faces: null,
   primitivas: [],
+  selecionada: null,
+  transformacao: null,
 }
 
 const ferramenta = () => FERRAMENTAS[estado.ferramenta]
+const tipoDe = (p) => FERRAMENTAS[p.ferramenta].tipo
+const geometria = (p) => transformarParams(tipoDe(p), p.params, p.matriz)
+// a média dos pontos se mantém na transformação, então dá para usar o centro original sem arredondar
+const centroAtual = (p) => aplicar(p.matriz, centroDaFigura(tipoDe(p), p.params))
 
 function parametros(ponto) {
   const p = estado.primeiro
@@ -40,7 +46,14 @@ function pintar(pixels, rgb) {
 function desenhar() {
   fb.limpar()
   for (const p of estado.primitivas) {
-    pintar(FERRAMENTAS[p.ferramenta].rasterizar(p.params), hexParaRgb(p.cor))
+    pintar(FERRAMENTAS[p.ferramenta].rasterizar(geometria(p)), hexParaRgb(p.cor))
+  }
+
+  // marca o centro usado na escala e na rotação
+  const sel = estado.selecionada
+  if (sel && ['escala', 'rotacao'].includes(estado.transformacao)) {
+    const c = centroAtual(sel)
+    fb.setPixel(Math.round(c.x), Math.round(c.y), BRANCO)
   }
 
   const esmaecida = hexParaRgb(ferramenta().cor).map((c) => c * 0.45)
@@ -62,13 +75,17 @@ function desenhar() {
 }
 
 function adicionar(params) {
-  const f = ferramenta()
-  const pixels = f.rasterizar(params)
-  // o círculo repete alguns pontos na simetria, então conta só os diferentes
-  const unicos = new Set(pixels.map((p) => `${p.x},${p.y}`))
-  estado.primitivas.push({ ferramenta: estado.ferramenta, params, cor: f.cor, pixels: unicos.size })
+  const p = { ferramenta: estado.ferramenta, params, cor: ferramenta().cor, matriz: identidade() }
+  estado.primitivas.push(p)
+  estado.selecionada = p
   cancelar()
   atualizarLista()
+}
+
+// o círculo repete alguns pontos na simetria, então conta só os diferentes
+function contarPixels(p) {
+  const pixels = FERRAMENTAS[p.ferramenta].rasterizar(geometria(p))
+  return new Set(pixels.map((q) => `${q.x},${q.y}`)).size
 }
 
 function cancelar() {
@@ -79,7 +96,6 @@ function cancelar() {
   atualizarFerramenta()
   desenhar()
 }
-
 
 function atualizarFerramenta() {
   const f = ferramenta()
@@ -111,39 +127,84 @@ function atualizarFerramenta() {
   }
 }
 
+function atualizarTransformacao() {
+  const t = TRANSFORMACOES[estado.transformacao]
+  el('transformacao-nome').textContent = t ? t.nome : 'Nenhuma'
+
+  if (!t) el('transformacao-instrucao').textContent = 'Escolha uma no menu Transformações.'
+  else if (!estado.selecionada) el('transformacao-instrucao').textContent = 'Desenhe uma figura ou selecione uma na lista.'
+  else el('transformacao-instrucao').textContent = t.teclas
+
+  el('restaurar').hidden = !estado.selecionada
+
+  for (const item of document.querySelectorAll('[data-transformacao]')) {
+    item.classList.toggle('ativo', item.dataset.transformacao === estado.transformacao)
+  }
+}
+
 function atualizarLista() {
   const lista = el('lista')
   lista.innerHTML = ''
   el('vazio').hidden = estado.primitivas.length > 0
+  if (!estado.primitivas.includes(estado.selecionada)) estado.selecionada = null
 
   estado.primitivas.forEach((p, i) => {
     const f = FERRAMENTAS[p.ferramenta]
-    const q = p.params
+    const q = geometria(p)
     const pontos = {
       reta: () => `(${q.x1}, ${q.y1}) → (${q.x2}, ${q.y2})`,
       circulo: () => `centro (${q.xc}, ${q.yc}), raio ${q.r}`,
-      poligono: () => `${q.vertices.length} faces`,
+      poligono: () => {
+        const c = arredondar(centroDaFigura(f.tipo, q))
+        return `${q.vertices.length} faces, centro (${c.x}, ${c.y})`
+      },
     }[f.tipo]()
 
     const item = document.createElement('li')
+    item.classList.toggle('selecionada', p === estado.selecionada)
     item.innerHTML = `
       <i class="cor" style="--c: ${p.cor}"></i>
       <span class="nome">${NOMES[f.tipo]} ${f.nome}</span>
       <button class="remover" title="Remover">×</button>
-      <span class="detalhe">${pontos} · ${p.pixels} px</span>`
-    item.querySelector('.remover').onclick = () => {
+      <span class="detalhe">${pontos} · ${contarPixels(p)} px</span>`
+    item.onclick = () => {
+      estado.selecionada = p
+      atualizarLista()
+      desenhar()
+    }
+    item.querySelector('.remover').onclick = (e) => {
+      e.stopPropagation()
       estado.primitivas.splice(i, 1)
       atualizarLista()
       desenhar()
     }
     lista.append(item)
   })
+
+  atualizarTransformacao()
+}
+
+function transformar(tecla) {
+  const sel = estado.selecionada
+  if (!sel || !estado.transformacao) return false
+  const m = matrizDaTecla(estado.transformacao, tecla, centroAtual(sel))
+  if (!m) return false
+  // a nova transformação entra à esquerda das que já foram aplicadas
+  const nova = multiplicar(m, sel.matriz)
+  // sem limite a figura cresce sem parar e o preenchimento trava a página
+  const novoTamanho = tamanho(transformarParams(tipoDe(sel), sel.params, nova))
+  if (novoTamanho > 2 * Math.max(fb.largura, fb.altura) && novoTamanho > tamanho(geometria(sel))) return true
+  sel.matriz = nova
+  atualizarLista()
+  desenhar()
+  return true
 }
 
 function executar(acao) {
   if (acao === 'faces') return pedirFaces(estado.ferramenta)
   if (acao === 'desfazer') estado.primitivas.pop()
   if (acao === 'limpar') estado.primitivas = []
+  if (acao === 'restaurar' && estado.selecionada) estado.selecionada.matriz = identidade()
   if (acao === 'grade') estado.grade = !estado.grade
   if (acao === 'zoom-mais' || acao === 'zoom-menos') {
     const i = ZOOMS.indexOf(estado.zoom) + (acao === 'zoom-mais' ? 1 : -1)
@@ -242,11 +303,15 @@ el('form-raio').addEventListener('submit', (e) => {
 })
 
 document.addEventListener('click', (e) => {
-  const item = e.target.closest('[data-algoritmo], [data-acao]')
+  const item = e.target.closest('[data-algoritmo], [data-acao], [data-transformacao]')
   if (!item) return
   menu.fechar()
   const algoritmo = item.dataset.algoritmo
-  if (algoritmo && FERRAMENTAS[algoritmo].tipo === 'poligono') {
+  if (item.dataset.transformacao) {
+    estado.transformacao = item.dataset.transformacao
+    atualizarTransformacao()
+    desenhar()
+  } else if (algoritmo && FERRAMENTAS[algoritmo].tipo === 'poligono') {
     pedirFaces(algoritmo)
   } else if (algoritmo) {
     estado.ferramenta = algoritmo
@@ -279,6 +344,8 @@ document.addEventListener('keydown', (e) => {
   if (dialogoFaces.open) return
   if (e.key === 'Escape') return menu.estaAberto() ? menu.fechar() : cancelar()
   if (e.target === inputRaio) return
+  const modificador = e.ctrlKey || e.metaKey || e.altKey
+  if (e.key.startsWith('Arrow') && !modificador && transformar(e.key)) return e.preventDefault()
 
   if (e.ctrlKey || e.metaKey) {
     if (e.key.toLowerCase() === 'z') {
