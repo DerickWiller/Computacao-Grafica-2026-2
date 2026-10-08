@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Rasterização - Atividade 05</title>
+    <title>Rasterização - Atividade 06</title>
     <link rel="stylesheet" href="src/estilo.css" />
   </head>
   <body>
@@ -20,6 +20,13 @@
                 <button class="menu-item" data-algoritmo="analitico"><i class="cor"></i>Analítico</button>
                 <button class="menu-item" data-algoritmo="dda"><i class="cor"></i>DDA</button>
                 <button class="menu-item" data-algoritmo="bresenham"><i class="cor"></i>Bresenham</button>
+              </div>
+            </div>
+            <div class="submenu">
+              <button class="menu-item">Polígonos <span class="seta">›</span></button>
+              <div class="menu-lista">
+                <button class="menu-item" data-algoritmo="varredura"><i class="cor"></i>Varredura</button>
+                <button class="menu-item" data-algoritmo="boundaryFill"><i class="cor"></i>BoundaryFill</button>
               </div>
             </div>
             <div class="submenu">
@@ -71,6 +78,8 @@
             <input id="raio" type="number" min="0" max="1000" step="1" inputmode="numeric" disabled />
             <button type="submit" disabled>Desenhar</button>
           </form>
+
+          <button class="botao-texto alterar-faces" id="alterar-faces" data-acao="faces" hidden>Alterar quantidade de faces</button>
         </div>
 
         <div class="cartao lista">
@@ -89,10 +98,25 @@
       <span id="status-grade"></span>
     </footer>
 
+    <dialog class="dialogo" id="dialogo-faces">
+      <form method="dialog">
+        <h2>Polígono</h2>
+        <label for="faces">Quantidade de faces</label>
+        <input id="faces" type="number" min="3" max="50" step="1" inputmode="numeric" required />
+        <div class="dialogo-botoes">
+          <button type="button" class="secundario" id="faces-cancelar">Cancelar</button>
+          <button value="ok" class="primario">OK</button>
+        </div>
+      </form>
+    </dialog>
+
     <script src="src/algoritmos/reta-analitica.js"></script>
     <script src="src/algoritmos/reta-dda.js"></script>
     <script src="src/algoritmos/reta-bresenham.js"></script>
     <script src="src/algoritmos/circunferencia-bresenham.js"></script>
+    <script src="src/algoritmos/poligono.js"></script>
+    <script src="src/algoritmos/preenchimento-varredura.js"></script>
+    <script src="src/algoritmos/preenchimento-boundary-fill.js"></script>
     <script src="src/framebuffer.js"></script>
     <script src="src/ferramentas.js"></script>
     <script src="src/menu.js"></script>

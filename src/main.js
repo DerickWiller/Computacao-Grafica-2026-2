@@ -1,9 +1,13 @@
 const ZOOMS = [4, 6, 8, 10, 12, 16, 20, 24]
 const RAIO_MAXIMO = 1000
+const BRANCO = [255, 255, 255]
+const NOMES = { reta: 'Reta', circulo: 'Circunferência', poligono: 'Polígono' }
 
 const el = (id) => document.getElementById(id)
 const tela = el('tela')
 const inputRaio = el('raio')
+const dialogoFaces = el('dialogo-faces')
+const inputFaces = el('faces')
 const fb = new Framebuffer(el('canvas'))
 const menu = iniciarMenu(document.querySelector('.barra-menu'))
 
@@ -14,6 +18,8 @@ const estado = {
   primeiro: null, // ponto inicial da reta ou centro do círculo
   mouse: null,
   raioDigitado: null,
+  vertices: [],
+  faces: null,
   primitivas: [],
 }
 
@@ -27,7 +33,8 @@ function parametros(ponto) {
 }
 
 function pintar(pixels, rgb) {
-  for (const { x, y } of pixels) fb.setPixel(x, y, rgb)
+  const fundo = rgb.map((c) => c * 0.55)
+  for (const { x, y, preenchido } of pixels) fb.setPixel(x, y, preenchido ? fundo : rgb)
 }
 
 function desenhar() {
@@ -36,13 +43,20 @@ function desenhar() {
     pintar(FERRAMENTAS[p.ferramenta].rasterizar(p.params), hexParaRgb(p.cor))
   }
 
+  const esmaecida = hexParaRgb(ferramenta().cor).map((c) => c * 0.45)
+
+  if (estado.vertices.length) {
+    const pontos = estado.mouse ? [...estado.vertices, estado.mouse] : estado.vertices
+    pintar(contornoPoligono(pontos, pontos.length > 2), esmaecida)
+    for (const v of estado.vertices) fb.setPixel(v.x, v.y, BRANCO)
+  }
+
   // com raio digitado a prévia não depende do mouse
   const alvo = estado.raioDigitado !== null ? estado.primeiro : estado.mouse
   if (estado.primeiro && alvo) {
-    const esmaecida = hexParaRgb(ferramenta().cor).map((c) => c * 0.45)
     pintar(ferramenta().rasterizar(parametros(alvo)), esmaecida)
   }
-  if (estado.primeiro) fb.setPixel(estado.primeiro.x, estado.primeiro.y, [255, 255, 255])
+  if (estado.primeiro) fb.setPixel(estado.primeiro.x, estado.primeiro.y, BRANCO)
 
   fb.mostrar()
 }
@@ -60,6 +74,7 @@ function adicionar(params) {
 function cancelar() {
   estado.primeiro = null
   estado.raioDigitado = null
+  estado.vertices = []
   inputRaio.value = ''
   atualizarFerramenta()
   desenhar()
@@ -71,13 +86,16 @@ function atualizarFerramenta() {
   const p = estado.primeiro
   const circulo = f.tipo === 'circulo'
 
-  el('ferramenta-nome').textContent = `${circulo ? 'Circunferência' : 'Reta'} ${f.nome}`
+  el('ferramenta-nome').textContent = `${NOMES[f.tipo]} ${f.nome}`
   el('ferramenta-cor').style.setProperty('--c', f.cor)
 
   if (circulo) {
     el('instrucao').textContent = p
       ? `Centro em (${p.x}, ${p.y}). Clique para definir o raio ou digite o valor abaixo.`
       : 'Clique no centro da circunferência.'
+  } else if (f.tipo === 'poligono') {
+    el('instrucao').textContent =
+      `Polígono de ${estado.faces} faces. Clique no vértice ${estado.vertices.length + 1} de ${estado.faces}.`
   } else {
     el('instrucao').textContent = p
       ? `Ponto inicial em (${p.x}, ${p.y}). Clique no ponto final.`
@@ -85,6 +103,7 @@ function atualizarFerramenta() {
   }
 
   el('form-raio').hidden = !circulo
+  el('alterar-faces').hidden = f.tipo !== 'poligono'
   for (const campo of el('form-raio').querySelectorAll('input, button')) campo.disabled = !p
 
   for (const item of document.querySelectorAll('[data-algoritmo]')) {
@@ -100,14 +119,16 @@ function atualizarLista() {
   estado.primitivas.forEach((p, i) => {
     const f = FERRAMENTAS[p.ferramenta]
     const q = p.params
-    const pontos = f.tipo === 'reta'
-      ? `(${q.x1}, ${q.y1}) → (${q.x2}, ${q.y2})`
-      : `centro (${q.xc}, ${q.yc}), raio ${q.r}`
+    const pontos = {
+      reta: () => `(${q.x1}, ${q.y1}) → (${q.x2}, ${q.y2})`,
+      circulo: () => `centro (${q.xc}, ${q.yc}), raio ${q.r}`,
+      poligono: () => `${q.vertices.length} faces`,
+    }[f.tipo]()
 
     const item = document.createElement('li')
     item.innerHTML = `
       <i class="cor" style="--c: ${p.cor}"></i>
-      <span class="nome">${f.tipo === 'reta' ? 'Reta' : 'Circunferência'} ${f.nome}</span>
+      <span class="nome">${NOMES[f.tipo]} ${f.nome}</span>
       <button class="remover" title="Remover">×</button>
       <span class="detalhe">${pontos} · ${p.pixels} px</span>`
     item.querySelector('.remover').onclick = () => {
@@ -120,6 +141,7 @@ function atualizarLista() {
 }
 
 function executar(acao) {
+  if (acao === 'faces') return pedirFaces(estado.ferramenta)
   if (acao === 'desfazer') estado.primitivas.pop()
   if (acao === 'limpar') estado.primitivas = []
   if (acao === 'grade') estado.grade = !estado.grade
@@ -175,7 +197,7 @@ tela.addEventListener('mousemove', (e) => {
   cursor.style.top = `${(fb.altura - 1 - p.y) * estado.zoom}px`
   el('status-mouse').textContent = `x: ${p.x}  y: ${p.y}`
 
-  if (estado.primeiro) desenhar()
+  if (estado.primeiro || estado.vertices.length) desenhar()
 })
 
 tela.addEventListener('mouseleave', () => {
@@ -185,6 +207,13 @@ tela.addEventListener('mouseleave', () => {
 
 tela.addEventListener('click', (e) => {
   const p = pontoDoMouse(e)
+  if (ferramenta().tipo === 'poligono') {
+    estado.vertices.push(p)
+    if (estado.vertices.length === estado.faces) return adicionar({ vertices: estado.vertices })
+    atualizarFerramenta()
+    desenhar()
+    return
+  }
   if (!estado.primeiro) {
     estado.primeiro = p
     atualizarFerramenta()
@@ -216,15 +245,38 @@ document.addEventListener('click', (e) => {
   const item = e.target.closest('[data-algoritmo], [data-acao]')
   if (!item) return
   menu.fechar()
-  if (item.dataset.algoritmo) {
-    estado.ferramenta = item.dataset.algoritmo
+  const algoritmo = item.dataset.algoritmo
+  if (algoritmo && FERRAMENTAS[algoritmo].tipo === 'poligono') {
+    pedirFaces(algoritmo)
+  } else if (algoritmo) {
+    estado.ferramenta = algoritmo
     cancelar()
   } else {
     executar(item.dataset.acao)
   }
 })
 
+let algoritmoPendente = null
+
+function pedirFaces(algoritmo) {
+  algoritmoPendente = algoritmo
+  inputFaces.value = estado.faces ?? ''
+  dialogoFaces.returnValue = ''
+  dialogoFaces.showModal()
+  inputFaces.select()
+}
+
+el('faces-cancelar').addEventListener('click', () => dialogoFaces.close())
+
+dialogoFaces.addEventListener('close', () => {
+  if (dialogoFaces.returnValue !== 'ok') return
+  estado.ferramenta = algoritmoPendente
+  estado.faces = Number(inputFaces.value)
+  cancelar()
+})
+
 document.addEventListener('keydown', (e) => {
+  if (dialogoFaces.open) return
   if (e.key === 'Escape') return menu.estaAberto() ? menu.fechar() : cancelar()
   if (e.target === inputRaio) return
 

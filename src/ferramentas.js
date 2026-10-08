@@ -17,12 +17,29 @@ const FERRAMENTAS = {
     cor: '#b388ff',
     rasterizar: (p) => retaBresenham(p.x1, p.y1, p.x2, p.y2),
   },
+  varredura: {
+    nome: 'Varredura',
+    tipo: 'poligono',
+    cor: '#f472b6',
+    rasterizar: (p) => poligonoPreenchido(p.vertices, preenchimentoVarredura),
+  },
+  boundaryFill: {
+    nome: 'BoundaryFill',
+    tipo: 'poligono',
+    cor: '#facc15',
+    rasterizar: (p) => poligonoPreenchido(p.vertices, preenchimentoBoundaryFill),
+  },
   circulo: {
     nome: 'Bresenham',
     tipo: 'circulo',
     cor: '#4ade80',
     rasterizar: (p) => circunferenciaBresenham(p.xc, p.yc, p.r),
   },
+}
+
+function poligonoPreenchido(vertices, preencher) {
+  const preenchimento = preencher(vertices).map((p) => ({ ...p, preenchido: true }))
+  return [...preenchimento, ...contornoPoligono(vertices)]
 }
 
 function hexParaRgb(hex) {

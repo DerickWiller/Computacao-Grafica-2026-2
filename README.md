@@ -7,5 +7,6 @@ Para rodar é só abrir o `index.html` no navegador.
 ## Atividades
 
 - A5: rasterização de retas (Analítico, DDA e Bresenham) e circunferência (Bresenham).
+- A6: polígonos com preenchimento por Varredura e BoundaryFill.
 
 Os relatórios de cada atividade ficam na pasta `relatorios`.
