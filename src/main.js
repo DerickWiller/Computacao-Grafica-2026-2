@@ -193,7 +193,10 @@ function transformar(tecla) {
   const nova = multiplicar(m, sel.matriz)
   // sem limite a figura cresce sem parar e o preenchimento trava a página
   const novoTamanho = tamanho(transformarParams(tipoDe(sel), sel.params, nova))
-  if (novoTamanho > 2 * Math.max(fb.largura, fb.altura) && novoTamanho > tamanho(geometria(sel))) return true
+  if (novoTamanho > 2 * Math.max(fb.largura, fb.altura) && novoTamanho > tamanho(geometria(sel))) {
+    el('transformacao-instrucao').textContent = 'A figura já chegou no tamanho máximo.'
+    return true
+  }
   sel.matriz = nova
   atualizarLista()
   desenhar()
