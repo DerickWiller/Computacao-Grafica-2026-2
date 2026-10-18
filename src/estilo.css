@@ -180,6 +180,9 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
 .raio :disabled { opacity: 0.4; cursor: default; }
 
 .alterar-faces, .restaurar { margin-top: 10px; }
+.botoes-recorte { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 10px; }
+.botoes-recorte button { white-space: nowrap; }
+.botoes-recorte[hidden] { display: none; }
 
 .lista { display: flex; flex-direction: column; flex: 1; min-height: 0; }
 .lista-topo { display: flex; justify-content: space-between; align-items: baseline; }

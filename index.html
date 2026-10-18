@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Computação Gráfica - Atividade 07</title>
+    <title>Computação Gráfica - Atividade 08</title>
     <link rel="stylesheet" href="src/estilo.css" />
   </head>
   <body>
@@ -44,6 +44,14 @@
             <button class="menu-item" data-transformacao="translacao">Translação</button>
             <button class="menu-item" data-transformacao="escala">Escala</button>
             <button class="menu-item" data-transformacao="rotacao">Rotação</button>
+          </div>
+        </div>
+
+        <div class="menu">
+          <button class="menu-titulo">Recortes</button>
+          <div class="menu-lista">
+            <button class="menu-item" data-recorte="linhas">Linhas Retas</button>
+            <button class="menu-item" data-recorte="poligonos">Polígonos</button>
           </div>
         </div>
 
@@ -89,6 +97,11 @@
           </form>
 
           <button class="botao-texto alterar-faces" id="alterar-faces" data-acao="faces" hidden>Alterar quantidade de faces</button>
+
+          <div class="botoes-recorte" id="botoes-recorte" hidden>
+            <button class="botao-texto" data-acao="exemplos">Gerar figuras de exemplo</button>
+            <button class="botao-texto" data-acao="sair-recorte">Sair do recorte</button>
+          </div>
         </div>
 
         <div class="cartao">
@@ -133,7 +146,10 @@
     <script src="src/algoritmos/poligono.js"></script>
     <script src="src/algoritmos/preenchimento-varredura.js"></script>
     <script src="src/algoritmos/preenchimento-boundary-fill.js"></script>
+    <script src="src/algoritmos/recorte-cohen-sutherland.js"></script>
+    <script src="src/algoritmos/recorte-sutherland-hodgman.js"></script>
     <script src="src/transformacoes.js"></script>
+    <script src="src/recorte.js"></script>
     <script src="src/framebuffer.js"></script>
     <script src="src/ferramentas.js"></script>
     <script src="src/menu.js"></script>

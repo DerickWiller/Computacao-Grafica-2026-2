@@ -23,6 +23,7 @@ const estado = {
   primitivas: [],
   selecionada: null,
   transformacao: null,
+  recorte: null, // { tipo, canto, janela }
 }
 
 const ferramenta = () => FERRAMENTAS[estado.ferramenta]
@@ -43,11 +44,40 @@ function pintar(pixels, rgb) {
   for (const { x, y, preenchido } of pixels) fb.setPixel(x, y, preenchido ? fundo : rgb)
 }
 
+function janelaRecorte() {
+  const r = estado.recorte
+  if (!r) return null
+  if (r.canto) return estado.mouse ? retangulo(r.canto, estado.mouse) : null
+  return r.janela
+}
+
 function desenhar() {
   fb.limpar()
+  const j = janelaRecorte()
+  const tipoRecortado = j && RECORTES[estado.recorte.tipo].tipo
   for (const p of estado.primitivas) {
-    pintar(FERRAMENTAS[p.ferramenta].rasterizar(geometria(p)), hexParaRgb(p.cor))
+    const f = FERRAMENTAS[p.ferramenta]
+    const rgb = hexParaRgb(p.cor)
+    let pixels = f.rasterizar(geometria(p))
+    if (!j) {
+      pintar(pixels, rgb)
+      continue
+    }
+    // a parte de fora fica apagada; dentro da janela quem aparece é a figura recortada
+    if (f.tipo === tipoRecortado) pixels = pixels.filter((q) => !dentroDaJanela(q, j))
+    pintar(pixels, rgb.map((c) => c * 0.25))
   }
+
+  if (j) {
+    pintar(contornoPoligono(cantosDaJanela(j)), hexParaRgb(COR_JANELA))
+    for (const p of estado.primitivas) {
+      const f = FERRAMENTAS[p.ferramenta]
+      if (f.tipo !== tipoRecortado) continue
+      const r = recortarGeometria(f.tipo, geometria(p), j)
+      if (r) pintar(f.rasterizar(r), hexParaRgb(p.cor))
+    }
+  }
+  if (estado.recorte?.canto) fb.setPixel(estado.recorte.canto.x, estado.recorte.canto.y, BRANCO)
 
   // marca o centro usado na escala e na rotação
   const sel = estado.selecionada
@@ -98,6 +128,7 @@ function cancelar() {
 }
 
 function atualizarFerramenta() {
+  if (estado.recorte) return atualizarRecorte()
   const f = ferramenta()
   const p = estado.primeiro
   const circulo = f.tipo === 'circulo'
@@ -122,8 +153,64 @@ function atualizarFerramenta() {
   el('alterar-faces').hidden = f.tipo !== 'poligono'
   for (const campo of el('form-raio').querySelectorAll('input, button')) campo.disabled = !p
 
+  el('botoes-recorte').hidden = true
+  marcarMenu()
+}
+
+function atualizarRecorte() {
+  const r = estado.recorte
+  const info = RECORTES[r.tipo]
+  const j = r.janela
+  el('ferramenta-nome').textContent = info.nome
+  el('ferramenta-cor').style.setProperty('--c', COR_JANELA)
+
+  let texto = 'Clique em dois cantos para desenhar a janela de recorte.'
+  if (r.canto) texto = `Primeiro canto em (${r.canto.x}, ${r.canto.y}). Clique no canto oposto.`
+  else if (j) texto = `Janela de (${j.xMin}, ${j.yMin}) até (${j.xMax}, ${j.yMax}). Clique para desenhar outra.`
+  el('instrucao').textContent = `Algoritmo de ${info.algoritmo}. ${texto}`
+
+  el('form-raio').hidden = true
+  el('alterar-faces').hidden = true
+  el('botoes-recorte').hidden = false
+  marcarMenu()
+}
+
+function marcarMenu() {
   for (const item of document.querySelectorAll('[data-algoritmo]')) {
-    item.classList.toggle('ativo', item.dataset.algoritmo === estado.ferramenta)
+    item.classList.toggle('ativo', !estado.recorte && item.dataset.algoritmo === estado.ferramenta)
+  }
+  for (const item of document.querySelectorAll('[data-recorte]')) {
+    item.classList.toggle('ativo', item.dataset.recorte === estado.recorte?.tipo)
+  }
+}
+
+function marcarCanto(p) {
+  const r = estado.recorte
+  if (r.canto) {
+    r.janela = retangulo(r.canto, p)
+    r.canto = null
+  } else {
+    r.canto = p
+    r.janela = null
+  }
+  atualizarFerramenta()
+  desenhar()
+}
+
+function limparJanela() {
+  const r = estado.recorte
+  if (r.canto) r.canto = null
+  else r.janela = null
+  atualizarFerramenta()
+  desenhar()
+}
+
+// troca os exemplos anteriores do mesmo tipo em vez de empilhar cópias
+function adicionarExemplos() {
+  const tipo = estado.recorte.tipo
+  estado.primitivas = estado.primitivas.filter((p) => p.exemplo !== tipo)
+  for (const e of exemplosRecorte(tipo, fb.largura, fb.altura)) {
+    estado.primitivas.push({ ...e, cor: FERRAMENTAS[e.ferramenta].cor, matriz: identidade(), exemplo: tipo })
   }
 }
 
@@ -208,12 +295,18 @@ function executar(acao) {
   if (acao === 'desfazer') estado.primitivas.pop()
   if (acao === 'limpar') estado.primitivas = []
   if (acao === 'restaurar' && estado.selecionada) estado.selecionada.matriz = identidade()
+  if (acao === 'exemplos') adicionarExemplos()
+  if (acao === 'sair-recorte') {
+    estado.recorte = null
+    atualizarFerramenta()
+  }
   if (acao === 'grade') estado.grade = !estado.grade
   if (acao === 'zoom-mais' || acao === 'zoom-menos') {
     const i = ZOOMS.indexOf(estado.zoom) + (acao === 'zoom-mais' ? 1 : -1)
     estado.zoom = ZOOMS[Math.min(Math.max(i, 0), ZOOMS.length - 1)]
   }
-  if (acao === 'cancelar' || acao.startsWith('zoom')) cancelar()
+  if (acao === 'cancelar' && estado.recorte) limparJanela()
+  else if (acao === 'cancelar' || acao.startsWith('zoom')) cancelar()
 
   atualizarLista()
   if (acao === 'grade' || acao.startsWith('zoom')) ajustarTela()
@@ -231,6 +324,8 @@ function ajustarTela() {
   const altura = Math.max(1, Math.floor(livreY / z))
 
   fb.redimensionar(largura, altura)
+  // a posição antiga do mouse era da grade anterior
+  estado.mouse = null
   el('cursor').style.display = 'none'
   tela.style.width = `${largura * z}px`
   tela.style.height = `${altura * z}px`
@@ -261,7 +356,7 @@ tela.addEventListener('mousemove', (e) => {
   cursor.style.top = `${(fb.altura - 1 - p.y) * estado.zoom}px`
   el('status-mouse').textContent = `x: ${p.x}  y: ${p.y}`
 
-  if (estado.primeiro || estado.vertices.length) desenhar()
+  if (estado.primeiro || estado.vertices.length || estado.recorte?.canto) desenhar()
 })
 
 tela.addEventListener('mouseleave', () => {
@@ -271,6 +366,7 @@ tela.addEventListener('mouseleave', () => {
 
 tela.addEventListener('click', (e) => {
   const p = pontoDoMouse(e)
+  if (estado.recorte) return marcarCanto(p)
   if (ferramenta().tipo === 'poligono') {
     estado.vertices.push(p)
     if (estado.vertices.length === estado.faces) return adicionar({ vertices: estado.vertices })
@@ -306,7 +402,7 @@ el('form-raio').addEventListener('submit', (e) => {
 })
 
 document.addEventListener('click', (e) => {
-  const item = e.target.closest('[data-algoritmo], [data-acao], [data-transformacao]')
+  const item = e.target.closest('[data-algoritmo], [data-acao], [data-transformacao], [data-recorte]')
   if (!item) return
   menu.fechar()
   const algoritmo = item.dataset.algoritmo
@@ -314,10 +410,15 @@ document.addEventListener('click', (e) => {
     estado.transformacao = item.dataset.transformacao
     atualizarTransformacao()
     desenhar()
+  } else if (item.dataset.recorte) {
+    // trocar de linhas para polígonos mantém a janela que já estava desenhada
+    estado.recorte = { tipo: item.dataset.recorte, canto: null, janela: estado.recorte?.janela ?? null }
+    cancelar()
   } else if (algoritmo && FERRAMENTAS[algoritmo].tipo === 'poligono') {
     pedirFaces(algoritmo)
   } else if (algoritmo) {
     estado.ferramenta = algoritmo
+    estado.recorte = null
     cancelar()
   } else {
     executar(item.dataset.acao)
@@ -340,12 +441,16 @@ dialogoFaces.addEventListener('close', () => {
   if (dialogoFaces.returnValue !== 'ok') return
   estado.ferramenta = algoritmoPendente
   estado.faces = Number(inputFaces.value)
+  estado.recorte = null
   cancelar()
 })
 
 document.addEventListener('keydown', (e) => {
   if (dialogoFaces.open) return
-  if (e.key === 'Escape') return menu.estaAberto() ? menu.fechar() : cancelar()
+  if (e.key === 'Escape') {
+    if (menu.estaAberto()) return menu.fechar()
+    return estado.recorte ? limparJanela() : cancelar()
+  }
   if (e.target === inputRaio) return
   const modificador = e.ctrlKey || e.metaKey || e.altKey
   if (e.key.startsWith('Arrow') && !modificador && transformar(e.key)) return e.preventDefault()

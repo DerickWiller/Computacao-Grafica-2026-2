@@ -9,5 +9,6 @@ Para rodar é só abrir o `index.html` no navegador.
 - A5: rasterização de retas (Analítico, DDA e Bresenham) e circunferência (Bresenham).
 - A6: polígonos com preenchimento por Varredura e BoundaryFill.
 - A7: transformações geométricas (translação, escala e rotação) pelo teclado.
+- A8: recorte de linhas (Cohen-Sutherland) e de polígonos (Sutherland-Hodgman) com a janela desenhada pelo mouse.
 
 Os relatórios de cada atividade ficam na pasta `relatorios`.
