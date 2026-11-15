@@ -35,6 +35,21 @@ const FERRAMENTAS = {
     cor: '#4ade80',
     rasterizar: (p) => circunferenciaBresenham(p.xc, p.yc, p.r),
   },
+  bezier: {
+    nome: 'Bézier',
+    tipo: 'curva',
+    cor: '#60a5fa',
+    minimo: 3,
+    rasterizar: (p) => curvaBezier(p.pontos),
+  },
+  bspline: {
+    nome: 'B-Spline',
+    tipo: 'curva',
+    cor: '#f87171',
+    // a cúbica precisa de 4 pontos para formar o primeiro segmento
+    minimo: 4,
+    rasterizar: (p) => curvaBSpline(p.pontos),
+  },
 }
 
 function poligonoPreenchido(vertices, preencher) {

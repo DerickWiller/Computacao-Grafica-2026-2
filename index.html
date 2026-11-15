@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Computação Gráfica - Atividade 08</title>
+    <title>Computação Gráfica - Atividade 09</title>
     <link rel="stylesheet" href="src/estilo.css" />
   </head>
   <body>
@@ -56,6 +56,14 @@
         </div>
 
         <div class="menu">
+          <button class="menu-titulo">Curvas</button>
+          <div class="menu-lista">
+            <button class="menu-item" data-algoritmo="bezier"><i class="cor"></i>Bézier</button>
+            <button class="menu-item" data-algoritmo="bspline"><i class="cor"></i>B-Spline</button>
+          </div>
+        </div>
+
+        <div class="menu">
           <button class="menu-titulo">Editar</button>
           <div class="menu-lista">
             <button class="menu-item" data-acao="desfazer">Desfazer <kbd>Ctrl+Z</kbd></button>
@@ -70,6 +78,7 @@
             <button class="menu-item" data-acao="zoom-mais">Aumentar pixels <kbd>+</kbd></button>
             <button class="menu-item" data-acao="zoom-menos">Diminuir pixels <kbd>-</kbd></button>
             <button class="menu-item" data-acao="grade">Mostrar grade <kbd>G</kbd></button>
+            <button class="menu-item" data-acao="controle">Mostrar pontos de controle <kbd>P</kbd></button>
           </div>
         </div>
       </nav>
@@ -96,7 +105,7 @@
             <button type="submit" disabled>Desenhar</button>
           </form>
 
-          <button class="botao-texto alterar-faces" id="alterar-faces" data-acao="faces" hidden>Alterar quantidade de faces</button>
+          <button class="botao-texto alterar-quantidade" id="alterar-quantidade" data-acao="quantidade" hidden></button>
 
           <div class="botoes-recorte" id="botoes-recorte" hidden>
             <button class="botao-texto" data-acao="exemplos">Gerar figuras de exemplo</button>
@@ -127,13 +136,13 @@
       <span id="status-grade"></span>
     </footer>
 
-    <dialog class="dialogo" id="dialogo-faces">
+    <dialog class="dialogo" id="dialogo-quantidade">
       <form method="dialog">
-        <h2>Polígono</h2>
-        <label for="faces">Quantidade de faces</label>
-        <input id="faces" type="number" min="3" max="50" step="1" inputmode="numeric" required />
+        <h2 id="quantidade-titulo"></h2>
+        <label for="quantidade" id="quantidade-rotulo"></label>
+        <input id="quantidade" type="number" step="1" inputmode="numeric" required />
         <div class="dialogo-botoes">
-          <button type="button" class="secundario" id="faces-cancelar">Cancelar</button>
+          <button type="button" class="secundario" id="quantidade-cancelar">Cancelar</button>
           <button value="ok" class="primario">OK</button>
         </div>
       </form>
@@ -146,6 +155,9 @@
     <script src="src/algoritmos/poligono.js"></script>
     <script src="src/algoritmos/preenchimento-varredura.js"></script>
     <script src="src/algoritmos/preenchimento-boundary-fill.js"></script>
+    <script src="src/algoritmos/curva.js"></script>
+    <script src="src/algoritmos/curva-bezier.js"></script>
+    <script src="src/algoritmos/curva-bspline.js"></script>
     <script src="src/algoritmos/recorte-cohen-sutherland.js"></script>
     <script src="src/algoritmos/recorte-sutherland-hodgman.js"></script>
     <script src="src/transformacoes.js"></script>

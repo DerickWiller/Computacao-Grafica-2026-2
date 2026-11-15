@@ -77,6 +77,7 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
   align-items: center;
   gap: 8px;
   width: 100%;
+  white-space: nowrap;
   padding: 7px 10px;
   border-radius: 5px;
 }
@@ -179,7 +180,7 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
 .raio button { padding: 6px 12px; background: var(--destaque); color: var(--fundo); border-radius: 6px; font-weight: 600; }
 .raio :disabled { opacity: 0.4; cursor: default; }
 
-.alterar-faces, .restaurar { margin-top: 10px; }
+.alterar-quantidade, .restaurar { margin-top: 10px; }
 .botoes-recorte { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 10px; }
 .botoes-recorte button { white-space: nowrap; }
 .botoes-recorte[hidden] { display: none; }

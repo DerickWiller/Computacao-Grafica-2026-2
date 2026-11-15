@@ -1,13 +1,14 @@
 const ZOOMS = [4, 6, 8, 10, 12, 16, 20, 24]
 const RAIO_MAXIMO = 1000
 const BRANCO = [255, 255, 255]
-const NOMES = { reta: 'Reta', circulo: 'Circunferência', poligono: 'Polígono' }
+const NOMES = { reta: 'Reta', circulo: 'Circunferência', poligono: 'Polígono', curva: 'Curva' }
+const MAXIMO_PONTOS = 20
 
 const el = (id) => document.getElementById(id)
 const tela = el('tela')
 const inputRaio = el('raio')
-const dialogoFaces = el('dialogo-faces')
-const inputFaces = el('faces')
+const dialogo = el('dialogo-quantidade')
+const inputQuantidade = el('quantidade')
 const fb = new Framebuffer(el('canvas'))
 const menu = iniciarMenu(document.querySelector('.barra-menu'))
 
@@ -15,11 +16,13 @@ const estado = {
   ferramenta: 'bresenham',
   zoom: 10,
   grade: true,
+  controle: true,
   primeiro: null, // ponto inicial da reta ou centro do círculo
   mouse: null,
   raioDigitado: null,
-  vertices: [],
+  vertices: [], // vértices do polígono ou pontos de controle da curva
   faces: null,
+  pontosControle: null,
   primitivas: [],
   selecionada: null,
   transformacao: null,
@@ -27,6 +30,8 @@ const estado = {
 }
 
 const ferramenta = () => FERRAMENTAS[estado.ferramenta]
+const porPontos = (tipo) => tipo === 'poligono' || tipo === 'curva'
+const quantidadeNecessaria = () => (ferramenta().tipo === 'curva' ? estado.pontosControle : estado.faces)
 const tipoDe = (p) => FERRAMENTAS[p.ferramenta].tipo
 const geometria = (p) => transformarParams(tipoDe(p), p.params, p.matriz)
 // a média dos pontos se mantém na transformação, então dá para usar o centro original sem arredondar
@@ -55,6 +60,16 @@ function desenhar() {
   fb.limpar()
   const j = janelaRecorte()
   const tipoRecortado = j && RECORTES[estado.recorte.tipo].tipo
+
+  // polígono de controle das curvas, bem apagado para a curva ficar por cima
+  if (estado.controle && !j) {
+    for (const p of estado.primitivas) {
+      if (tipoDe(p) !== 'curva') continue
+      const pontos = geometria(p).pontos.map(arredondar)
+      pintar(contornoPoligono(pontos, false), hexParaRgb(p.cor).map((c) => c * 0.3))
+    }
+  }
+
   for (const p of estado.primitivas) {
     const f = FERRAMENTAS[p.ferramenta]
     const rgb = hexParaRgb(p.cor)
@@ -79,6 +94,13 @@ function desenhar() {
   }
   if (estado.recorte?.canto) fb.setPixel(estado.recorte.canto.x, estado.recorte.canto.y, BRANCO)
 
+  if (estado.controle && !j) {
+    for (const p of estado.primitivas) {
+      if (tipoDe(p) !== 'curva') continue
+      for (const v of geometria(p).pontos.map(arredondar)) fb.setPixel(v.x, v.y, BRANCO)
+    }
+  }
+
   // marca o centro usado na escala e na rotação
   const sel = estado.selecionada
   if (sel && ['escala', 'rotacao'].includes(estado.transformacao)) {
@@ -90,7 +112,14 @@ function desenhar() {
 
   if (estado.vertices.length) {
     const pontos = estado.mouse ? [...estado.vertices, estado.mouse] : estado.vertices
-    pintar(contornoPoligono(pontos, pontos.length > 2), esmaecida)
+    const f = ferramenta()
+    if (f.tipo === 'curva') {
+      // a prévia da curva aparece quando já tem pontos suficientes para ela
+      pintar(contornoPoligono(pontos, false), esmaecida.map((c) => c * 0.6))
+      if (pontos.length >= f.minimo) pintar(f.rasterizar({ pontos }), esmaecida)
+    } else {
+      pintar(contornoPoligono(pontos, pontos.length > 2), esmaecida)
+    }
     for (const v of estado.vertices) fb.setPixel(v.x, v.y, BRANCO)
   }
 
@@ -143,6 +172,9 @@ function atualizarFerramenta() {
   } else if (f.tipo === 'poligono') {
     el('instrucao').textContent =
       `Polígono de ${estado.faces} faces. Clique no vértice ${estado.vertices.length + 1} de ${estado.faces}.`
+  } else if (f.tipo === 'curva') {
+    el('instrucao').textContent =
+      `Curva com ${estado.pontosControle} pontos de controle. Clique no ponto ${estado.vertices.length + 1} de ${estado.pontosControle}.`
   } else {
     el('instrucao').textContent = p
       ? `Ponto inicial em (${p.x}, ${p.y}). Clique no ponto final.`
@@ -150,7 +182,9 @@ function atualizarFerramenta() {
   }
 
   el('form-raio').hidden = !circulo
-  el('alterar-faces').hidden = f.tipo !== 'poligono'
+  el('alterar-quantidade').hidden = !porPontos(f.tipo)
+  el('alterar-quantidade').textContent =
+    f.tipo === 'curva' ? 'Alterar quantidade de pontos' : 'Alterar quantidade de faces'
   for (const campo of el('form-raio').querySelectorAll('input, button')) campo.disabled = !p
 
   el('botoes-recorte').hidden = true
@@ -170,7 +204,7 @@ function atualizarRecorte() {
   el('instrucao').textContent = `Algoritmo de ${info.algoritmo}. ${texto}`
 
   el('form-raio').hidden = true
-  el('alterar-faces').hidden = true
+  el('alterar-quantidade').hidden = true
   el('botoes-recorte').hidden = false
   marcarMenu()
 }
@@ -182,6 +216,8 @@ function marcarMenu() {
   for (const item of document.querySelectorAll('[data-recorte]')) {
     item.classList.toggle('ativo', item.dataset.recorte === estado.recorte?.tipo)
   }
+  document.querySelector('[data-acao=grade]').classList.toggle('ativo', estado.grade)
+  document.querySelector('[data-acao=controle]').classList.toggle('ativo', estado.controle)
 }
 
 function marcarCanto(p) {
@@ -245,6 +281,11 @@ function atualizarLista() {
         const c = arredondar(centroDaFigura(f.tipo, q))
         return `${q.vertices.length} faces, centro (${c.x}, ${c.y})`
       },
+      curva: () => {
+        // a B-Spline não passa pelas pontas, então mostra o centro em vez do primeiro e do último ponto
+        const c = arredondar(centroDaFigura(f.tipo, q))
+        return `${q.pontos.length} pontos, centro (${c.x}, ${c.y})`
+      },
     }[f.tipo]()
 
     const item = document.createElement('li')
@@ -291,7 +332,7 @@ function transformar(tecla) {
 }
 
 function executar(acao) {
-  if (acao === 'faces') return pedirFaces(estado.ferramenta)
+  if (acao === 'quantidade') return pedirQuantidade(estado.ferramenta)
   if (acao === 'desfazer') estado.primitivas.pop()
   if (acao === 'limpar') estado.primitivas = []
   if (acao === 'restaurar' && estado.selecionada) estado.selecionada.matriz = identidade()
@@ -301,6 +342,8 @@ function executar(acao) {
     atualizarFerramenta()
   }
   if (acao === 'grade') estado.grade = !estado.grade
+  if (acao === 'controle') estado.controle = !estado.controle
+  if (acao === 'grade' || acao === 'controle') marcarMenu()
   if (acao === 'zoom-mais' || acao === 'zoom-menos') {
     const i = ZOOMS.indexOf(estado.zoom) + (acao === 'zoom-mais' ? 1 : -1)
     estado.zoom = ZOOMS[Math.min(Math.max(i, 0), ZOOMS.length - 1)]
@@ -367,9 +410,12 @@ tela.addEventListener('mouseleave', () => {
 tela.addEventListener('click', (e) => {
   const p = pontoDoMouse(e)
   if (estado.recorte) return marcarCanto(p)
-  if (ferramenta().tipo === 'poligono') {
+  const tipo = ferramenta().tipo
+  if (porPontos(tipo)) {
     estado.vertices.push(p)
-    if (estado.vertices.length === estado.faces) return adicionar({ vertices: estado.vertices })
+    if (estado.vertices.length === quantidadeNecessaria()) {
+      return adicionar(tipo === 'curva' ? { pontos: estado.vertices } : { vertices: estado.vertices })
+    }
     atualizarFerramenta()
     desenhar()
     return
@@ -414,8 +460,8 @@ document.addEventListener('click', (e) => {
     // trocar de linhas para polígonos mantém a janela que já estava desenhada
     estado.recorte = { tipo: item.dataset.recorte, canto: null, janela: estado.recorte?.janela ?? null }
     cancelar()
-  } else if (algoritmo && FERRAMENTAS[algoritmo].tipo === 'poligono') {
-    pedirFaces(algoritmo)
+  } else if (algoritmo && porPontos(FERRAMENTAS[algoritmo].tipo)) {
+    pedirQuantidade(algoritmo)
   } else if (algoritmo) {
     estado.ferramenta = algoritmo
     estado.recorte = null
@@ -427,26 +473,38 @@ document.addEventListener('click', (e) => {
 
 let algoritmoPendente = null
 
-function pedirFaces(algoritmo) {
+// o mesmo diálogo pede as faces do polígono e os pontos de controle da curva
+function pedirQuantidade(algoritmo) {
+  const f = FERRAMENTAS[algoritmo]
+  const curva = f.tipo === 'curva'
   algoritmoPendente = algoritmo
-  inputFaces.value = estado.faces ?? ''
-  dialogoFaces.returnValue = ''
-  dialogoFaces.showModal()
-  inputFaces.select()
+  el('quantidade-titulo').textContent = curva ? `Curva ${f.nome}` : 'Polígono'
+  el('quantidade-rotulo').textContent = curva
+    ? `Quantidade de pontos de controle (de ${f.minimo} a ${MAXIMO_PONTOS})`
+    : 'Quantidade de faces'
+  inputQuantidade.min = curva ? f.minimo : 3
+  inputQuantidade.max = curva ? MAXIMO_PONTOS : 50
+  const anterior = curva ? estado.pontosControle : estado.faces
+  inputQuantidade.value = curva ? Math.max(anterior ?? 0, f.minimo) : anterior ?? ''
+  dialogo.returnValue = ''
+  dialogo.showModal()
+  inputQuantidade.select()
 }
 
-el('faces-cancelar').addEventListener('click', () => dialogoFaces.close())
+el('quantidade-cancelar').addEventListener('click', () => dialogo.close())
 
-dialogoFaces.addEventListener('close', () => {
-  if (dialogoFaces.returnValue !== 'ok') return
+dialogo.addEventListener('close', () => {
+  if (dialogo.returnValue !== 'ok') return
   estado.ferramenta = algoritmoPendente
-  estado.faces = Number(inputFaces.value)
+  const n = Number(inputQuantidade.value)
+  if (FERRAMENTAS[algoritmoPendente].tipo === 'curva') estado.pontosControle = n
+  else estado.faces = n
   estado.recorte = null
   cancelar()
 })
 
 document.addEventListener('keydown', (e) => {
-  if (dialogoFaces.open) return
+  if (dialogo.open) return
   if (e.key === 'Escape') {
     if (menu.estaAberto()) return menu.fechar()
     return estado.recorte ? limparJanela() : cancelar()
@@ -465,6 +523,7 @@ document.addEventListener('keydown', (e) => {
   if (e.key === '+' || e.key === '=') executar('zoom-mais')
   if (e.key === '-') executar('zoom-menos')
   if (e.key === 'g' || e.key === 'G') executar('grade')
+  if (e.key === 'p' || e.key === 'P') executar('controle')
 })
 
 window.addEventListener('resize', ajustarTela)

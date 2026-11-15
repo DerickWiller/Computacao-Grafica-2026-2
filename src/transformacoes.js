@@ -104,12 +104,14 @@ function transformarParams(tipo, q, m) {
     const borda = aplicar(m, { x: q.xc + q.r, y: q.yc })
     return { xc: Math.round(c.x), yc: Math.round(c.y), r: Math.round(Math.hypot(borda.x - c.x, borda.y - c.y)) }
   }
+  // a curva é a mesma se transformar só os pontos de controle, e o arredondamento fica para a rasterização
+  if (tipo === 'curva') return { pontos: q.pontos.map((v) => aplicar(m, v)) }
   return { vertices: q.vertices.map((v) => arredondar(aplicar(m, v))) }
 }
 
 function tamanho(q) {
   if (q.r !== undefined) return 2 * q.r
-  const pontos = q.vertices ?? [{ x: q.x1, y: q.y1 }, { x: q.x2, y: q.y2 }]
+  const pontos = q.vertices ?? q.pontos ?? [{ x: q.x1, y: q.y1 }, { x: q.x2, y: q.y2 }]
   const xs = pontos.map((p) => p.x)
   const ys = pontos.map((p) => p.y)
   return Math.max(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys))
@@ -118,9 +120,10 @@ function tamanho(q) {
 function centroDaFigura(tipo, q) {
   if (tipo === 'reta') return { x: (q.x1 + q.x2) / 2, y: (q.y1 + q.y2) / 2 }
   if (tipo === 'circulo') return { x: q.xc, y: q.yc }
-  const n = q.vertices.length
+  const pontos = q.vertices ?? q.pontos
+  const n = pontos.length
   return {
-    x: q.vertices.reduce((soma, v) => soma + v.x, 0) / n,
-    y: q.vertices.reduce((soma, v) => soma + v.y, 0) / n,
+    x: pontos.reduce((soma, v) => soma + v.x, 0) / n,
+    y: pontos.reduce((soma, v) => soma + v.y, 0) / n,
   }
 }
